@@ -200,7 +200,14 @@ app.get("/", (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
       </head>
       <body class="bg-gray-100 min-h-screen">
-        <div class="fixed bottom-0 right-0 w-full p-4">
+        <button
+          id="toggle-button"
+          class="fixed top-4 right-4 z-50 bg-white rounded-full w-8 h-8 shadow flex items-center justify-center text-gray-400 hover:text-gray-600"
+          onclick="toggleStyle()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0-4 0"/><path d="M21 12q-3.6 6-9 6t-9-6q3.6-6 9-6t9 6"/></g></svg>
+        </button>
+        <footer class="fixed bottom-0 right-0 w-full text-sm p-4" id="credits">
           <p>
             Made by{" "}
             <a href="https://bsky.social/matteogauthier.fr" class="text-blue-500 hover:underline" target="_blank">
@@ -209,22 +216,22 @@ app.get("/", (c) => {
           </p>
           <a
             href="https://github.com/matteogauthier/bluesky-wall"
-            class="text-sm text-gray-500 hover:underline"
+            class="text-xs text-gray-500 hover:underline"
             target="_blank"
           >
             View on GitHub
           </a>
-        </div>
+        </footer>
 
         <div class="max-w-2xl mx-auto p-4">
-          <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-4">
+          <div class="bg-white rounded-lg shadow p-4 mb-4 sticky top-4 main-container">
             <h1 class="text-2xl font-bold mb-2">Bluesky Wall</h1>
             <p class="text-gray-500 mb-4 text-sm">
               This website let you see the latest posts from a given search term on Bluesky. Make it perfect for
-              conferences, events, live coding, etc. 
+              conferences, events, live coding, etc.
             </p>
 
-            <div class="space-y-4">
+            <div class="space-y-4 actions">
               <div>
                 <label htmlFor="search" class="block text-sm font-medium text-gray-700">
                   Search posts
@@ -297,6 +304,22 @@ app.get("/", (c) => {
               const searchInput = document.getElementById('search');
               const speedInput = document.getElementById('speed');
               const speedValue = document.getElementById('speed-value');
+
+              function toggleStyle() {
+                // change root variable to hide or show credits
+                const creditsVisible = document.documentElement.style.getPropertyValue('--credits-visible');
+                document.documentElement.style.setProperty('--credits-visible', creditsVisible === '0' ? '1' : '0');
+
+                if (creditsVisible === '0') {
+                  document.getElementById('credits').style.display = 'none';
+                  document.querySelector('.main-container p').style.display = 'none';
+                  document.querySelector('.main-container .actions').style.display = 'none';
+                } else {
+                  document.getElementById('credits').style.display = 'block';
+                  document.querySelector('.main-container p').style.display = 'block';
+                  document.querySelector('.main-container .actions').style.display = 'block';
+                }
+              }
 
               function connectWebSocket() {
                 const searchTerm = searchInput.value;
