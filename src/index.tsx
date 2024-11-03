@@ -48,6 +48,16 @@ const BLUESKY_API_URL = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProf
 const profileCache = new Map<string, BlueskyProfile>()
 const CACHE_DURATION = 1000 * 60 * 60 * 24 // 5 minutes
 
+let connectedClients = 0;
+
+function startConnectionLogger() {
+  setInterval(() => {
+    console.log(`Current connected clients: ${connectedClients}`);
+  }, 60000 * 5); // Log every minute
+}
+
+startConnectionLogger();
+
 class BlueskyConnection {
   private static instance: BlueskyConnection
   private ws: WebSocket | null = null
@@ -135,7 +145,8 @@ app.get(
 
     return {
       onOpen: async (_evt, ws) => {
-        console.log("Client connected")
+        connectedClients++;
+        console.log("Client connected. Total clients:", connectedClients)
 
         unsubscribe = BlueskyConnection.getInstance().subscribe(async (post) => {
           if (post.commit?.record?.text) {
@@ -178,7 +189,8 @@ app.get(
       },
 
       onClose: () => {
-        console.log("Client disconnected")
+        connectedClients--;
+        console.log("Client disconnected. Total clients:", connectedClients)
         if (unsubscribe) {
           unsubscribe()
         }
@@ -320,11 +332,11 @@ app.get("/", (c) => {
                   document.querySelector('.main-container .actions').style.display = 'block';
                 }
               }
-
               function connectWebSocket() {
                 const searchTerm = searchInput.value;
                 const speed = speedInput.value;
-                const wsUrl = \`wss://\${window.location.host}/ws?search=\${encodeURIComponent(searchTerm)}&speed=\${speed}\`;
+                const protocol = "${process?.env?.NODE_ENV === 'production' ? 'wss' : 'ws'}";
+                const wsUrl = \`\${protocol}://\${window.location.host}/ws?search=\${encodeURIComponent(searchTerm)}&speed=\${speed}\`;
                 
                 if (ws) {
                   ws.close();

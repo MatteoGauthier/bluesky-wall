@@ -2,7 +2,7 @@
   "name": "bluesky-wall-api",
   "scripts": {
     "dev": "bun run --hot src/index.tsx",
-    "start": "bun run src/index.tsx"
+    "start": "NODE_ENV=production bun run src/index.tsx"
   },
   "dependencies": {
     "hono": "^4.6.8"
