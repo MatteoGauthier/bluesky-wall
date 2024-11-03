@@ -31,7 +31,8 @@ interface CleanPost {
   text: string
   createdAt: string
   url: string
-  author: {
+  did: string
+  author?: {
     did: string
     handle: string
     displayName: string
@@ -138,6 +139,7 @@ app.get(
   upgradeWebSocket((c) => {
     const searchTerm = c.req.query("search")?.toLowerCase() || ""
     const speed = parseInt(c.req.query("speed") || "1000")
+    const fetchProfiles = c.req.query("fetchProfiles") === "true"
 
     let postQueue: CleanPost[] = []
     let intervalId: ReturnType<typeof setInterval>
@@ -151,27 +153,31 @@ app.get(
         unsubscribe = BlueskyConnection.getInstance().subscribe(async (post) => {
           if (post.commit?.record?.text) {
             if (!searchTerm || post.commit.record.text.toLowerCase().includes(searchTerm)) {
-              const profile = await getProfile(post.did)
+              let cleanPost: CleanPost = {
+                id: post.commit.rkey,
+                cid: post.commit.cid,
+                text: post.commit.record.text,
+                createdAt: post.commit.record.createdAt,
+                url: `https://bsky.app/profile/${post.did}/post/${post.commit.rkey}`,
+                did: post.did,
+                meta: {
+                  queueSize: postQueue.length,
+                },
+              }
 
-              if (profile) {
-                const cleanPost: CleanPost = {
-                  id: post.commit.rkey,
-                  cid: post.commit.cid,
-                  text: post.commit.record.text,
-                  createdAt: post.commit.record.createdAt,
-                  url: `https://bsky.app/profile/${profile.handle}/post/${post.commit.rkey}`,
-                  author: {
+              if (fetchProfiles) {
+                const profile = await getProfile(post.did)
+                if (profile) {
+                  cleanPost.author = {
                     did: profile.did,
                     handle: profile.handle,
                     displayName: profile.displayName,
                     avatar: profile.avatar,
-                  },
-                  meta: {
-                    queueSize: postQueue.length,
-                  },
+                  }
                 }
-                postQueue.push(cleanPost)
               }
+
+              postQueue.push(cleanPost)
             }
           }
         })
@@ -316,22 +322,30 @@ app.get("/", (c) => {
               const searchInput = document.getElementById('search');
               const speedInput = document.getElementById('speed');
               const speedValue = document.getElementById('speed-value');
+              const profileCache = new Map();
 
-              function toggleStyle() {
-                // change root variable to hide or show credits
-                const creditsVisible = document.documentElement.style.getPropertyValue('--credits-visible');
-                document.documentElement.style.setProperty('--credits-visible', creditsVisible === '0' ? '1' : '0');
+              async function fetchProfile(did) {
+                if (profileCache.has(did)) {
+                  return profileCache.get(did);
+                }
 
-                if (creditsVisible === '0') {
-                  document.getElementById('credits').style.display = 'none';
-                  document.querySelector('.main-container p').style.display = 'none';
-                  document.querySelector('.main-container .actions').style.display = 'none';
-                } else {
-                  document.getElementById('credits').style.display = 'block';
-                  document.querySelector('.main-container p').style.display = 'block';
-                  document.querySelector('.main-container .actions').style.display = 'block';
+                try {
+                  const response = await fetch(\`https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=\${did}\`);
+                  if (!response.ok) throw new Error('Failed to fetch profile');
+                  
+                  const profile = await response.json();
+                  profileCache.set(did, profile);
+                  
+                  // Clear cache after 24 hours
+                  setTimeout(() => profileCache.delete(did), 1000 * 60 * 60 * 24);
+                  
+                  return profile;
+                } catch (error) {
+                  console.error('Error fetching profile:', error);
+                  return null;
                 }
               }
+
               function connectWebSocket() {
                 const searchTerm = searchInput.value;
                 const speed = speedInput.value;
@@ -344,28 +358,40 @@ app.get("/", (c) => {
 
                 ws = new WebSocket(wsUrl);
                 
-                ws.onmessage = (event) => {
+                ws.onmessage = async (event) => {
                   const post = JSON.parse(event.data);
-                  addPost(post);
+                  await addPost(post);
                 };
               }
 
-              function addPost(post) {
+              async function addPost(post) {
                 const clone = postTemplate.content.cloneNode(true);
                 
+                let profile = post.author;
+                if (!profile) {
+                  profile = await fetchProfile(post.did);
+                }
+                
                 const img = clone.querySelector('.post-avatar');
-                img.src = post.author.avatar;
-                img.alt = post.author.displayName;
+                if (profile?.avatar) {
+                  img.src = profile.avatar;
+                  img.alt = profile.displayName || 'Unknown';
+                } else {
+                  img.src = 'https://placeholder.co/100'; // Add a default avatar
+                  img.alt = 'Unknown user';
+                }
 
-                clone.querySelector('.post-author-name').textContent = post.author.displayName;
-                clone.querySelector('.post-author-handle .handle').textContent = post.author.handle;
+                clone.querySelector('.post-author-name').textContent = profile?.displayName || 'Unknown';
+                clone.querySelector('.post-author-handle .handle').textContent = profile?.handle || post.did;
                 clone.querySelector('.post-content').textContent = post.text;
                 
                 const time = new Date(post.createdAt);
                 clone.querySelector('.post-time').textContent = time.toLocaleTimeString();
                 
                 const profileLink = clone.querySelector('.post-author-handle');
-                profileLink.href = \`https://bsky.app/profile/\${post.author.handle}\`;
+                profileLink.href = profile?.handle ? 
+                  \`https://bsky.app/profile/\${profile.handle}\` : 
+                  \`https://bsky.app/profile/\${post.did}\`;
                 
                 const postLink = clone.querySelector('.post-link');
                 postLink.href = post.url;
