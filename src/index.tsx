@@ -210,7 +210,7 @@ app.get("/", (c) => {
         <footer class="fixed bottom-0 right-0 w-full text-sm p-4" id="credits">
           <p>
             Made by{" "}
-            <a href="https://bsky.social/matteogauthier.fr" class="text-blue-500 hover:underline" target="_blank">
+            <a href="https://bsky.app/profile/matteogauthier.fr" class="text-blue-500 hover:underline" target="_blank">
               Mattèo Gauthier
             </a>
           </p>
@@ -324,7 +324,7 @@ app.get("/", (c) => {
               function connectWebSocket() {
                 const searchTerm = searchInput.value;
                 const speed = speedInput.value;
-                const wsUrl = \`ws://\${window.location.host}/ws?search=\${encodeURIComponent(searchTerm)}&speed=\${speed}\`;
+                const wsUrl = \`wss://\${window.location.host}/ws?search=\${encodeURIComponent(searchTerm)}&speed=\${speed}\`;
                 
                 if (ws) {
                   ws.close();
