@@ -377,7 +377,7 @@ app.get("/", (c) => {
                   img.src = profile.avatar;
                   img.alt = profile.displayName || 'Unknown';
                 } else {
-                  img.src = 'https://placeholder.co/100'; // Add a default avatar
+                  img.src = \`https://ui-avatars.com/api/?name=\${profile?.displayName || post.did}\`; // Add a default avatar
                   img.alt = 'Unknown user';
                 }
 
